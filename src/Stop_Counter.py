@@ -6,24 +6,33 @@ class Stop_Counter:
     def __init__(self):
         self.cnt = 0
         #self.previous_time = time.time() + 5
-        self.lower_yellow = (20, 100, 100)
-        self.upper_yellow = (40, 255, 255)
-	self.flag=True
+
+        #self.lower_yellow = (120, 20, 20)
+        #self.upper_yellow = (250, 145, 33)
+	self.st_yellow_count = 0
+
+        # self.lower_yellow = (20, 40, 100)
+        # self.upper_yellow = (35, 200, 255)
+	    # self.st_yellow_count=0
+
 
     def check_stop_line(self, img):
         #if time.time() < self.previous_time + 10:
          #   return False
 
-        img = img[240:] #240
+        img = img[400:] #240
         img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        img_mask = cv2.inRange(img_hsv, self.lower_yellow, self.upper_yellow)
+	h, s, v = cv2.split(img_hsv)
+        h = cv2.inRange(h, 15, 30)
 
         # IMSHOW FOR DEBUG
-        # print(np.count_nonzero(img_mask))
-        #cv2.putText(img_mask, 'NONZERO %d'%np.count_nonzero(img_mask), (0,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
-        #cv2.imshow('img_mask', img_mask)
+        #print(np.count_nonzero(h))
+        #cv2.putText(h, 'NONZERO %d'%np.count_nonzero(h), (0,15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
+        #cv2.imshow('img_mask', h)
 
-        if np.count_nonzero(img_mask) > 2500:
+	st_yellow_count = np.count_nonzero(h)
+
+        if st_yellow_count > 4500:
             self.on_detected()
             return True
 
@@ -33,16 +42,16 @@ class Stop_Counter:
         print('STOP LINE DETECTED!!!')
         #self.previous_time = time.time()
         self.cnt += 1
-	self.flag=True
 
 if __name__ == '__main__':
     stop_counter = Stop_Counter()
 
-    cap = cv2.VideoCapture('video/original.avi')
+    cap = cv2.VideoCapture(0)
     while cap.isOpened():
         ret, frame = cap.read()
         stop_counter.check_stop_line(frame)
 
         cv2.imshow('frame', frame)
+        #cv2.imshow('hsv',img_hsg)
         if cv2.waitKey(1) == ord('q'):
             break

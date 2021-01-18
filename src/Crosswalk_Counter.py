@@ -23,7 +23,7 @@ class Crosswalk_Counter:
 if __name__ == '__main__':
     crosswalk_counter = Crosswalk_Counter()
 
-    cap = cv2.VideoCapture('video/original.avi')
+    cap = cv2.VideoCapture('test_video/cross_walk.avi')
     while cap.isOpened():
         ret, frame = cap.read()
         crosswalk_counter.check_crosswalk(frame)

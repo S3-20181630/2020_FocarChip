@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 class SlidingWindow:
     def __init__(self):
         self.cw_sum = 0
-        self.left_x_lower = 60
-        self.left_x_upper = 225
-        self.left_y_lower = 360
-	self.left_y_upper = 400
+        self.left_x_lower = 20 #20
+        self.left_x_upper = 250 #220
+        self.left_y_lower = 360 #310
+	self.left_y_upper = 448 #410
 
-        self.right_x_lower = 400
-        self.right_x_upper = 540
-        self.right_y_lower = 360
-        self.right_y_upper = 400
+        self.right_x_lower = 1000 #450
+        self.right_x_upper = 1250 #600
+        self.right_y_lower = 400 #350
+        self.right_y_upper = 500
 
     def slidingwindow(self, img):
 		x_location = None
@@ -40,9 +40,9 @@ class SlidingWindow:
 
 		# range of draw line
 		#good_left = ((nonzero_x >= 10) & (nonzero_y >= 380) & (nonzero_x <= width/2 - 80)).nonzero()[0]
-                good_left = ((nonzero_x >= self.left_x_lower) & (nonzero_y >= nonzero_x*(-0.2)+420) & (nonzero_x <= self.left_x_upper)).nonzero()[0]
+                good_left = ((nonzero_x >= self.left_x_lower) & (nonzero_y >= nonzero_x*(-0.25)+350) & (nonzero_x <= self.left_x_upper)).nonzero()[0] # (-0.5) + 300
 		#good_right = ((nonzero_x >= width/2 + 80) & (nonzero_y >= 380) & (nonzero_x <= width-10)).nonzero()[0]
-                good_right = ((nonzero_x >= self.right_x_lower) & (nonzero_y >= nonzero_x*(0.2)+420) & (nonzero_x <= self.right_x_upper)).nonzero()[0]
+                good_right = ((nonzero_x >= self.right_x_lower) & (nonzero_y >= nonzero_x*(0.4)) & (nonzero_x <= self.right_x_upper)).nonzero()[0] # (0.33) + 200
 
 		# draw left square
 		square_left = np.array([[self.left_x_lower, height], [self.left_x_lower, self.left_y_lower], [self.left_x_upper, self.left_y_upper], [self.left_x_upper, height]], np.int32)
@@ -58,6 +58,8 @@ class SlidingWindow:
 		
 
 		self.cw_sum = len(nonzero_x[good_left]) + len(nonzero_x[good_right])
+	        print("len(cw_sum) : ", len(nonzero_x[good_left]))
+		print(self.cw_sum)
 
 		#line_exist_flag = None
 		y_represent = None
@@ -65,12 +67,12 @@ class SlidingWindow:
 
 		#judge good_left and good_right and then make bigger one to criteria
 		#if len(good_left) > len(good_right):
-
-		if len(good_left) > 10:
+		if len(good_left) > 100:
 		    flag = 1
 		    x_represent = np.int(np.mean(nonzero_x[good_left]))
 		    y_represent = np.int(np.mean(nonzero_y[good_left]))
-		if len(good_right) > 10:
+                    print("y_represent : ", y_represent)
+		elif len(good_right) > 100:
 		    flag = 2
 		    x_represent = np.int(np.mean(nonzero_x[good_right]))
 		    y_represent = np.int(np.mean(nonzero_y[good_right]))
@@ -111,8 +113,8 @@ class SlidingWindow:
 		            p_left = np.polyfit(nonzero_y[left_lane], nonzero_x[left_lane], 3)
 		            x_represent = np.int(np.polyval(p_left, win_y_high))
 
-		        if win_y_low >= 380 and win_y_low < 400:
-		            x_location = x_represent + 150 #0.2
+		        if win_y_low >= 360 and win_y_low < 400:
+		            x_location = x_represent + 260 #245#150 #0.2
 		    else: # right lane
 		        win_y_low = y_represent - (window + 1) * window_height
 		        win_y_high = y_represent - (window) * window_height
@@ -128,8 +130,8 @@ class SlidingWindow:
 		        elif nonzero_y[right_lane] != [] and nonzero_x[right_lane] != []:
 		            p_right = np.polyfit(nonzero_y[right_lane], nonzero_x[right_lane], 3)
 		            x_represent = np.int(np.polyval(p_right, win_y_high))
-		        if win_y_low >= 380 and win_y_low < 400:
-		            x_location = x_represent - 150 #int(width*0.2) #0.2
+		        if win_y_low >= 360 and win_y_low < 400:
+		            x_location = x_represent - 300 #245#150 #int(width*0.2) #0.2
 
 		    left_lane.extend(good_left)
 		    right_lane.extend(good_right)

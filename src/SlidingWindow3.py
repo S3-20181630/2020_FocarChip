@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 class SlidingWindow:
     def __init__(self):
         self.cw_sum = 0
-        self.left_x_lower = 60
-        self.left_x_upper = 225
-        self.left_y_lower = 360
+        self.left_x_lower = 25
+        self.left_x_upper = 230
+        self.left_y_lower = 330
 	self.left_y_upper = 400
 
-        self.right_x_lower = 400
-        self.right_x_upper = 540
+        self.right_x_lower = 480
+        self.right_x_upper = 620
         self.right_y_lower = 360
         self.right_y_upper = 400
 
@@ -65,12 +65,11 @@ class SlidingWindow:
 
 		#judge good_left and good_right and then make bigger one to criteria
 		#if len(good_left) > len(good_right):
-
 		if len(good_left) > 10:
 		    flag = 1
 		    x_represent = np.int(np.mean(nonzero_x[good_left]))
 		    y_represent = np.int(np.mean(nonzero_y[good_left]))
-		if len(good_right) > 10:
+		elif len(good_right) > 10:
 		    flag = 2
 		    x_represent = np.int(np.mean(nonzero_x[good_right]))
 		    y_represent = np.int(np.mean(nonzero_y[good_right]))
@@ -112,7 +111,7 @@ class SlidingWindow:
 		            x_represent = np.int(np.polyval(p_left, win_y_high))
 
 		        if win_y_low >= 380 and win_y_low < 400:
-		            x_location = x_represent + 150 #0.2
+		            x_location = x_represent + 245#150 #0.2
 		    else: # right lane
 		        win_y_low = y_represent - (window + 1) * window_height
 		        win_y_high = y_represent - (window) * window_height
@@ -129,7 +128,7 @@ class SlidingWindow:
 		            p_right = np.polyfit(nonzero_y[right_lane], nonzero_x[right_lane], 3)
 		            x_represent = np.int(np.polyval(p_right, win_y_high))
 		        if win_y_low >= 380 and win_y_low < 400:
-		            x_location = x_represent - 150 #int(width*0.2) #0.2
+		            x_location = x_represent - 245#150 #int(width*0.2) #0.2
 
 		    left_lane.extend(good_left)
 		    right_lane.extend(good_right)

@@ -25,7 +25,7 @@ from datetime import datetime # for record
 
 #from Crosswalk_Counter import Crosswalk_Counter
 from Stop_Counter import Stop_Counter
-from CurveDetector import CurveDetector 
+from CurveDetector import CurveDetector
 from Pidcal import Pidcal
 from SlidingWindow import SlidingWindow
 
@@ -42,6 +42,8 @@ Width = 640
 Height = 480
 Offset = 340
 Gap = 40
+
+Run_speed = 0.0
 
 now = datetime.now() # for record
 pidcal = Pidcal()
@@ -88,8 +90,8 @@ def process_image(frame):
     blur_gray = cv2.GaussianBlur(gray,(kernel_size, kernel_size), 0)
 
     # canny edge
-    low_threshold = 60
-    high_threshold = 70
+    low_threshold = 45
+    high_threshold = 100
     edge_img = cv2.Canny(np.uint8(blur_gray), low_threshold, high_threshold)
 
     return edge_img
@@ -100,32 +102,44 @@ def start():
     global pub
     global image
     global cap
+    global Run_speed
     global Width, Height
     global car_run_speed
 	
-
+    # Node Name : auto_drive
     rospy.init_node('auto_drive')
+    
+    # motor publisher : pub
     pub = rospy.Publisher('xycar_motor', xycar_motor, queue_size=1)
-
+    
+    # usb_cam subscriber : image_sub 
+    # callback : img_callback
     image_sub = rospy.Subscriber("/usb_cam/image_raw", Image, img_callback)
 
+    # obstacle_detector subscriber : obstacle_sub
     obstacle_sub = rospy.Subscriber("/obstacles", Obstacles, obstacle_callback, queue_size = 1)
+
     print "---------- Xycar A2 v1.0 ----------"
     rospy.sleep(2)
-
-    out = cv2.VideoWriter('/home/nvidia/Videos/{}-{}-{} {}-{}.avi'.format(now.year, now.month, now.day, now.hour, now.minute), cv2.VideoWriter_fourcc(*'XVID'), 30, (640,480))
-
     
-    #src = cv2.resize(image,(640,480))
+    # original image video writer
+    out = cv2.VideoWriter('/home/nvidia/Videos/9-16/original_{}-{}-{} {}-{}.avi'.format(now.year, now.month, now.day, now.hour, now.minute), cv2.VideoWriter_fourcc(*'MJPG'), 30, (640,480))
+
+    # sliding_window out_img video writer
+    out2 = cv2.VideoWriter('/home/nvidia/Videos/9-16/sliding_{}-{}-{} {}-{}.avi'.format(now.year, now.month, now.day, now.hour, now.minute), cv2.VideoWriter_fourcc(*'MJPG'), 30, (640,480))
+
+    # image height
     h=image.shape[0]
+    #image width
     w=image.shape[1]
+
     x_loc_list=list()
     x_old=0
+
     setPoint = 320
     error = 0
     pTerm = 0.0
     cw_cnt=0
-    check = 0
     cw_sum_old = 0
 
    # crosswalk_counter = Crosswalk_Counter()
@@ -133,9 +147,17 @@ def start():
     curve_detector = CurveDetector()
 
     ob = ObstacleDetector()
+    last_mode = ob.mode
+    obstacle_cnt = 0
     #time.sleep(3)
 
     while True:
+        # Folder : Video/9-16
+        try:
+            out.write(image)
+	    out2.write(image)
+        except: pass
+
 	if slidingwindow.cw_sum == 0:
 	    cw_sum_old=0
 	else:
@@ -149,25 +171,26 @@ def start():
     	edge_img = process_image(image)
         print("ros is spin?")
 
+        # Bird Eyes View Image
         warp = region_of_interest(edge_img, 640, 350, 380, 640, 480)
 
         out_img, x_location = slidingwindow.slidingwindow(warp)
 
         if x_location is None:
             #Angle = (x_old - 320)*5 // 18
-            cv2.circle(out_img, (x_old, 340), 5, (255,0,255),-1)
+            cv2.circle(out_img, (x_old, 360), 5, (255,0,255),-1)
 	    error = setPoint - x_old
             x_location = x_old
 
         else:
-            cv2.circle(out_img, (x_location, 340), 5, (255,0,255),-1)
+            cv2.circle(out_img, (x_location, 360), 5, (255,0,255),-1)
             x_old = int(x_location)
            # Angle = (x_location - 320)*5 // 18
             x_loc_list.append(x_location)
 	    error = setPoint - x_location
 
 	pid = round(pidcal.pid_control(int(x_location)), 6)
-        print(pid)
+        print('pid:                 ', pid)
 	beforeErr = error
     	kp = 0.005
     	pTerm = kp * error
@@ -175,40 +198,66 @@ def start():
     	#pid = pTerm
     	#Angle = -pid * (180.0 / math.pi)
 	Angle = pid
+
+	last_mode = ob.mode
+
 	ob.check(obstacles)
+	
         #print(ob.mode)
 	st = 0
+	if stop_counter.flag == 1 and curve_detector.curve_count == 2:
+            Run_speed = 3.0
+	    if (ob.mode == Position.LEFT):
+	        for theta in range(280,495,10):
+                    st = 0.575*np.sin(theta*np.pi/180)
+		    drive(st,Run_speed)
+		    time.sleep(0.1)
+		
+                #while True:
+                    #print("stop")
 
-	if (ob.mode == Position.LEFT):
-	    for theta in range(270,500,10):
-                st = 0.24*np.sin(theta*np.pi/180)
-		drive(st,0)
+	    elif (ob.mode == Position.RIGHT):
+	        for theta in range(270,450,8):
+                    st = 0.9*np.sin(theta*np.pi/180)
+                    drive(-st,Run_speed)
 
-	elif (ob.mode == Position.RIGHT):
-	    for theta in range(270,360,9):
-                st = -0.15*np.sin(theta*np.pi/180)
-                drive(st,0)
+		    time.sleep(0.1)
+		#while True:
 
+		
+	        #for theta in range(360,500,11):
+                #    st = 0.19*np.sin(theta*np.pi/180)
+		    #drive(-st, 2)
+		
+		    #time.sleep(0.5)	
+	    else:
+	       drive(0, Run_speed)
+
+	    print('ob.mode: ', ob.mode)
+	    print('st: ', st)
+
+	if last_mode == Position.NO and ob.mode == Position.LEFT:
+	    obstacle_cnt += 1
 	
-#	else:
-#	    Angle = 0
+        print('obstacle_cnt!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!: ', obstacle_cnt)
 
-	print('ob.node: ', ob.mode)
-	print('st: ', st)
-
-
+	print(stop_counter.flag)
+	if obstacle_cnt == 2: 
+	    stop_counter.flag = 2
+	    drive(Angle, 2)
+	    print(stop_counter.flag)
+	
         #detected = crosswalk_counter.check_crosswalk(warp)
 	stop_detected = stop_counter.check_stop_line(image)
 	
-	if 5000 >= slidingwindow.cw_sum >= 4500 and 5000 >= cw_sum_old >= 4500 and check < 1: # delete 'check' later
+	if slidingwindow.cw_sum >= 4500 and cw_sum_old >= 4500:
 	    print('detected!')
-	    if stop_counter.flag == True: # if stop_detected:
+	    if stop_counter.flag == 2: # if stop_detected:
 	        drive(0,0)
 	        time.sleep(5)
 		#drive(0,4)
 		#time.sleep(2)
-		stop_counter.flag=False 
-		check+=1
+		stop_counter.flag=3 
 
 
 #	if detected:
@@ -224,10 +273,15 @@ def start():
 	#        else:
   	#	    drive(Angle, 0)
 
-	print('cw_sum:', slidingwindow.cw_sum)
-	print('check:', check)
-	print('flag:',stop_counter.flag)
+	print('cw_sum: ', slidingwindow.cw_sum)
+	print('flag: ',stop_counter.flag)
+        print("curve_detector.curve_count : {}".format(curve_detector.curve_count))
+	print('st_yellow_count:            					', stop_counter.st_yellow_count)
 	#print('cw_cnt:', crosswalk_counter.cw_cnt)
+
+        try:
+            out2.write(out_img)
+        except: pass
 
 
         #if detected: # stop line detected
@@ -248,10 +302,12 @@ def start():
 		break
 
         #cv2.imshow("src", src)
+	cv2.imshow('origin:', image)
 	cv2.imshow('image', edge_img)
 	cv2.imshow('warp', warp)
         cv2.imshow('result',out_img)
-        drive(Angle, 0)
+        # publish
+        drive(Angle, Run_speed)
         #drive(0,0)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
